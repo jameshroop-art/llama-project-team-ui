@@ -54,6 +54,7 @@ class GGUFInventory:
             fields = {k: v for k, v in reader.fields.items()}
             info.architecture = self._field_string(fields, "general.architecture")
             info.family = self._field_string(fields, "general.name")
+            info.parameter_count = self._parameter_count_from_fields(fields)
             info.context_length = self._context_length_from_fields(fields)
             info.tokenizer = self._field_string(fields, "tokenizer.ggml.model")
             if "tokenizer.chat_template" in fields:
@@ -104,6 +105,20 @@ class GGUFInventory:
             "gemma.context_length",
             "mistral.context_length",
             "general.context_length",
+        ):
+            value = self._field_int(fields, key)
+            if value is not None:
+                return value
+        return None
+
+    def _parameter_count_from_fields(self, fields: dict) -> int | None:
+        for key in (
+            "general.parameter_count",
+            "general.params",
+            "llama.parameter_count",
+            "qwen2.parameter_count",
+            "gemma.parameter_count",
+            "mistral.parameter_count",
         ):
             value = self._field_int(fields, key)
             if value is not None:

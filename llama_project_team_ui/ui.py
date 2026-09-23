@@ -43,6 +43,7 @@ class MainWindow(QMainWindow):
         self.audit = AuditLogger()
         self.process_manager = ProcessManager(self.audit)
         self.task_master = TaskMasterPlanner()
+        self._planning_in_progress = False
 
         self.profile_table = QTableWidget(0, 6)
         self.profile_table.setHorizontalHeaderLabels(["Name", "Role", "Host", "Port", "Mode", "Status"])
@@ -210,19 +211,20 @@ class MainWindow(QMainWindow):
         if not self.enforce_venv_for_execution():
             return
         host_check = validate_loopback_host(profile.host)
+        host_override_approved = True
         if not host_check.ok:
             if host_check.reason == "invalid host":
                 QMessageBox.critical(self, "Start failed", f"Host '{profile.host}' is invalid.")
                 return
-            approved_host = self.confirm(
+            host_override_approved = self.confirm(
                 "Non-loopback binding",
                 f"Host {profile.host} is non-loopback. Continue anyway?",
             )
-            if not approved_host:
+            if not host_override_approved:
                 return
         approved = self.confirm("Start Server", f"Start server '{profile.name}' on {profile.host}:{profile.port}?")
         try:
-            self.process_manager.start(profile, approved)
+            self.process_manager.start(profile, approved, non_loopback_approved=host_override_approved)
             self.refresh_profiles()
         except Exception as exc:
             QMessageBox.critical(self, "Start failed", str(exc))
@@ -239,8 +241,20 @@ class MainWindow(QMainWindow):
         profile = self.selected_profile()
         if not profile:
             return
+        host_check = validate_loopback_host(profile.host)
+        if not host_check.ok and host_check.reason == "invalid host":
+            QMessageBox.critical(self, "Restart failed", f"Host '{profile.host}' is invalid.")
+            return
+        host_override_approved = True
+        if not host_check.ok and host_check.reason == "non-loopback host":
+            host_override_approved = self.confirm(
+                "Non-loopback binding",
+                f"Host {profile.host} is non-loopback. Continue anyway?",
+            )
+            if not host_override_approved:
+                return
         approved = self.confirm("Restart Server", f"Restart server '{profile.name}'?")
-        self.process_manager.restart(profile, approved)
+        self.process_manager.restart(profile, approved, non_loopback_approved=host_override_approved)
         self.refresh_profiles()
 
     def remove_profile(self) -> None:
@@ -268,6 +282,10 @@ class MainWindow(QMainWindow):
         if not enabled:
             self.log_output.append("Task Master disabled.")
             return
+        if self._planning_in_progress:
+            self.log_output.append("Task Master planning already in progress.")
+            return
+        self._planning_in_progress = True
         self.log_output.append("Task Master planning started (read-only)...")
         threading.Thread(target=self._run_task_master_plan, daemon=True).start()
 
@@ -276,11 +294,16 @@ class MainWindow(QMainWindow):
             result = self.task_master.plan_read_only(self.config)
         except Exception as exc:
             message = f"Task Master planning failed: {exc}"
-            QTimer.singleShot(0, lambda msg=message: self.log_output.append(msg))
+            QTimer.singleShot(0, lambda msg=message: self._render_task_master_error(msg))
             return
         QTimer.singleShot(0, lambda plan=result: self._render_task_master_plan(plan))
 
+    def _render_task_master_error(self, message: str) -> None:
+        self._planning_in_progress = False
+        self.log_output.append(message)
+
     def _render_task_master_plan(self, result) -> None:
+        self._planning_in_progress = False
         self.log_output.append("Task Master read-only planning complete. No actions executed.")
         self.log_output.append(f"Discovered projects: {len(result.discoveries)}")
         for recommendation in result.recommendations:

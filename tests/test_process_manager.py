@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import socket
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -83,3 +85,35 @@ def test_duplicate_start_is_rejected(tmp_path: Path) -> None:
     finally:
         proc.terminate()
         proc.wait(timeout=5)
+
+
+def test_log_pump_collects_output(tmp_path: Path) -> None:
+    logger = AuditLogger(path=tmp_path / "audit.jsonl")
+    manager = ProcessManager(logger)
+
+    fake_server = tmp_path / "fake_server.py"
+    fake_server.write_text(
+        "#!/usr/bin/env python3\nimport time\nprint('fake-server-started', flush=True)\ntime.sleep(2)\n",
+        encoding="utf-8",
+    )
+    fake_server.chmod(0o755)
+    model = tmp_path / "model.gguf"
+    model.write_text("x", encoding="utf-8")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+
+    profile = LauncherProfile(
+        name="fake",
+        llama_server_path=str(fake_server),
+        model_path=str(model),
+        host="127.0.0.1",
+        port=port,
+    )
+    manager.start(profile, approved=True)
+    try:
+        time.sleep(0.2)
+        logs = manager.collect_logs(profile.id)
+        assert any("fake-server-started" in line for line in logs)
+    finally:
+        manager.stop(profile.id, approved=True)

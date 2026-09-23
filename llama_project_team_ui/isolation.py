@@ -113,6 +113,9 @@ class IsolationDiscoverer:
             )
         return IsolationRecommendation(
             strategy="project_venv",
-            reason="No container runtime detected; project-local .venv is the safest available path.",
+            reason=(
+                "No suitable existing container workflow is currently available; "
+                "project-local venv is the safest available path."
+            ),
             proposed_argv=["python", "-m", "venv", str(Path(project.path) / venv_name)],
         )

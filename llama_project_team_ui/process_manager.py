@@ -8,7 +8,7 @@ from queue import Queue
 
 from .audit import AuditLogger
 from .config import LauncherProfile
-from .safety import is_port_in_use, validate_port, validate_safe_argv
+from .safety import is_port_in_use, validate_loopback_host, validate_port, validate_safe_argv
 
 
 @dataclass
@@ -60,24 +60,26 @@ class ProcessManager:
         if is_port_in_use(profile.host, profile.port):
             raise ValueError(f"port {profile.port} is already in use")
 
-    def start(self, profile: LauncherProfile, approved: bool) -> None:
+    def start(self, profile: LauncherProfile, approved: bool, non_loopback_approved: bool = False) -> None:
         if not approved:
             argv = self._server_argv_preview(profile)
             self.audit_logger.log("start_server", argv, "rejected", None)
             return
+        host_check = validate_loopback_host(profile.host)
+        if not host_check.ok and host_check.reason == "non-loopback host" and not non_loopback_approved:
+            raise ValueError("non-loopback binding requires explicit approval")
+        argv = self.build_server_argv(profile)
         with self._lock:
             if profile.id in self.running and self.status(profile.id) == "running":
                 raise ValueError(f"profile '{profile.name}' is already running")
-        argv = self.build_server_argv(profile)
-        self.validate_profile_start(profile)
-        process = subprocess.Popen(
-            argv,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-        queue: Queue[str] = Queue()
-        with self._lock:
+            self.validate_profile_start(profile)
+            process = subprocess.Popen(
+                argv,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            queue: Queue[str] = Queue()
             self.running[profile.id] = RunningProcess(profile=profile, process=process, log_queue=queue)
 
         def pump() -> None:
@@ -109,10 +111,10 @@ class ProcessManager:
             with self._lock:
                 self.running.pop(profile_id, None)
 
-    def restart(self, profile: LauncherProfile, approved: bool) -> None:
+    def restart(self, profile: LauncherProfile, approved: bool, non_loopback_approved: bool = False) -> None:
         self.stop(profile.id, approved)
         if approved:
-            self.start(profile, approved)
+            self.start(profile, approved, non_loopback_approved=non_loopback_approved)
 
     def status(self, profile_id: str) -> str:
         with self._lock:

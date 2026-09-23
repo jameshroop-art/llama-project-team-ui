@@ -31,6 +31,7 @@ def test_read_metadata_keeps_missing_fields(monkeypatch, tmp_path: Path) -> None
             self.fields = {
                 "general.architecture": Field("qwen2"),
                 "qwen2.context_length": Field(32768),
+                "general.parameter_count": Field(14000000000),
                 "tokenizer.ggml.model": Field("qwen"),
             }
 
@@ -40,6 +41,7 @@ def test_read_metadata_keeps_missing_fields(monkeypatch, tmp_path: Path) -> None
 
     info = GGUFInventory().read_metadata(model_file)
     assert info.context_length == 32768
+    assert info.parameter_count == 14000000000
     assert info.chat_template is None
     assert info.fim is None
     assert "chat_template" in (info.missing_metadata or [])
