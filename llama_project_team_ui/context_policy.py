@@ -16,7 +16,9 @@ class ContextPolicy:
     def evaluate(self, used_tokens: int) -> str:
         if self.ctx_size <= 0:
             raise ValueError("ctx_size must be positive")
-        ratio = used_tokens / self.ctx_size
+        reserved = self.output_reserve + int(self.ctx_size * self.safety_margin)
+        effective_capacity = max(1, self.ctx_size - reserved)
+        ratio = used_tokens / effective_capacity
         if ratio >= self.hard_stop_threshold:
             return "hard_stop"
         if ratio >= self.compact_threshold:

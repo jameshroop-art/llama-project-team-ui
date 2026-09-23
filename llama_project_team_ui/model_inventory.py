@@ -54,10 +54,13 @@ class GGUFInventory:
             fields = {k: v for k, v in reader.fields.items()}
             info.architecture = self._field_string(fields, "general.architecture")
             info.family = self._field_string(fields, "general.name")
-            info.context_length = self._field_int(fields, "llama.context_length")
+            info.context_length = self._context_length_from_fields(fields)
             info.tokenizer = self._field_string(fields, "tokenizer.ggml.model")
-            info.chat_template = self._field_string(fields, "tokenizer.chat_template") is not None
-            info.fim = any(key.startswith("tokenizer.fim") for key in fields)
+            if "tokenizer.chat_template" in fields:
+                info.chat_template = self._field_string(fields, "tokenizer.chat_template") is not None
+            fim_keys = [key for key in fields if key.startswith("tokenizer.fim")]
+            if fim_keys:
+                info.fim = True
             info.metadata_source = "gguf-reader"
             info.confidence = "high"
         except Exception:
@@ -80,6 +83,19 @@ class GGUFInventory:
             return int(value.parts[-1])
         except Exception:
             return None
+
+    def _context_length_from_fields(self, fields: dict) -> int | None:
+        for key in (
+            "llama.context_length",
+            "qwen2.context_length",
+            "gemma.context_length",
+            "mistral.context_length",
+            "general.context_length",
+        ):
+            value = self._field_int(fields, key)
+            if value is not None:
+                return value
+        return None
 
     def _apply_heuristics(self, info: GGUFModelInfo) -> None:
         name = Path(info.path).name.lower()

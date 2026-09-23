@@ -23,7 +23,7 @@ class ProcessManager:
         self.audit_logger = audit_logger
         self.running: dict[str, RunningProcess] = {}
 
-    def build_server_argv(self, profile: LauncherProfile) -> list[str]:
+    def _server_argv_preview(self, profile: LauncherProfile) -> list[str]:
         argv = [
             str(Path(profile.llama_server_path).expanduser()),
             "-m",
@@ -40,6 +40,10 @@ class ProcessManager:
         if profile.projector_path:
             argv.extend(["--mmproj", profile.projector_path])
         argv.extend(profile.extra_args)
+        return argv
+
+    def build_server_argv(self, profile: LauncherProfile) -> list[str]:
+        argv = self._server_argv_preview(profile)
         safe = validate_safe_argv(argv)
         if not safe.ok:
             raise ValueError(safe.reason)
@@ -56,12 +60,13 @@ class ProcessManager:
             raise ValueError(f"port {profile.port} is already in use")
 
     def start(self, profile: LauncherProfile, approved: bool) -> None:
-        argv = self.build_server_argv(profile)
         if not approved:
+            argv = self._server_argv_preview(profile)
             self.audit_logger.log("start_server", argv, "rejected", None)
             return
         if profile.id in self.running and self.status(profile.id) == "running":
             raise ValueError(f"profile '{profile.name}' is already running")
+        argv = self.build_server_argv(profile)
         self.validate_profile_start(profile)
         process = subprocess.Popen(
             argv,
@@ -100,8 +105,9 @@ class ProcessManager:
             self.running.pop(profile_id, None)
 
     def restart(self, profile: LauncherProfile, approved: bool) -> None:
+        was_running = profile.id in self.running and self.status(profile.id) == "running"
         self.stop(profile.id, approved)
-        if approved:
+        if approved and was_running:
             self.start(profile, approved)
 
     def status(self, profile_id: str) -> str:

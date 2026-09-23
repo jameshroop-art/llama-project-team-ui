@@ -4,7 +4,13 @@ from llama_project_team_ui.context_policy import ContextPolicy, StructuredCheckp
 
 
 def test_context_thresholds() -> None:
-    policy = ContextPolicy(ctx_size=1000, compact_threshold=0.7, hard_stop_threshold=0.9)
+    policy = ContextPolicy(
+        ctx_size=1000,
+        output_reserve=0,
+        safety_margin=0.0,
+        compact_threshold=0.7,
+        hard_stop_threshold=0.9,
+    )
     assert policy.evaluate(600) == "healthy"
     assert policy.evaluate(700) == "compact_now"
     assert policy.evaluate(900) == "hard_stop"

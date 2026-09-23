@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import shlex
+import threading
 
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import (
@@ -210,9 +211,12 @@ class MainWindow(QMainWindow):
             return
         host_check = validate_loopback_host(profile.host)
         if not host_check.ok:
+            if host_check.reason == "invalid host":
+                QMessageBox.critical(self, "Start failed", f"Host '{profile.host}' is invalid.")
+                return
             approved_host = self.confirm(
                 "Non-loopback binding",
-                f"Host {profile.host} is non-loopback/invalid. Continue anyway?",
+                f"Host {profile.host} is non-loopback. Continue anyway?",
             )
             if not approved_host:
                 return
@@ -264,7 +268,18 @@ class MainWindow(QMainWindow):
         if not enabled:
             self.log_output.append("Task Master disabled.")
             return
-        result = self.task_master.plan_read_only(self.config)
+        self.log_output.append("Task Master planning started (read-only)...")
+        threading.Thread(target=self._run_task_master_plan, daemon=True).start()
+
+    def _run_task_master_plan(self) -> None:
+        try:
+            result = self.task_master.plan_read_only(self.config)
+        except Exception as exc:
+            QTimer.singleShot(0, lambda: self.log_output.append(f"Task Master planning failed: {exc}"))
+            return
+        QTimer.singleShot(0, lambda: self._render_task_master_plan(result))
+
+    def _render_task_master_plan(self, result) -> None:
         self.log_output.append("Task Master read-only planning complete. No actions executed.")
         self.log_output.append(f"Discovered projects: {len(result.discoveries)}")
         for recommendation in result.recommendations:
