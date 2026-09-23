@@ -78,7 +78,9 @@ class IsolationDiscoverer:
             distrobox_containers=distrobox_containers,
         )
 
-    def recommend(self, project: ProjectDiscovery, options: IsolationOptions) -> IsolationRecommendation:
+    def recommend(
+        self, project: ProjectDiscovery, options: IsolationOptions, venv_name: str = ".venv"
+    ) -> IsolationRecommendation:
         if options.distrobox_containers:
             name = options.distrobox_containers[0].split()[0]
             return IsolationRecommendation(
@@ -90,7 +92,7 @@ class IsolationDiscoverer:
             return IsolationRecommendation(
                 strategy="project_venv",
                 reason="Project already has a local venv; use it before creating new isolation layers.",
-                proposed_argv=[str(Path(project.path) / ".venv/bin/python"), "-V"],
+                proposed_argv=[str(Path(project.path) / f"{venv_name}/bin/python"), "-V"],
             )
         if options.podman_available and options.distrobox_available:
             box_name = Path(project.path).name + "-dev"
@@ -112,5 +114,5 @@ class IsolationDiscoverer:
         return IsolationRecommendation(
             strategy="project_venv",
             reason="No container runtime detected; project-local .venv is the safest available path.",
-            proposed_argv=["python", "-m", "venv", str(Path(project.path) / ".venv")],
+            proposed_argv=["python", "-m", "venv", str(Path(project.path) / venv_name)],
         )

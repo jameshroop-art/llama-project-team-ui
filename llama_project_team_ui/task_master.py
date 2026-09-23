@@ -25,7 +25,9 @@ class TaskMasterPlanner:
         projects = self.discoverer.discover_projects(config.workspace_roots, config.default_project_venv_name)
         options = self.discoverer.detect_isolation_options()
 
-        recommendations: list[IsolationRecommendation] = [self.discoverer.recommend(project, options) for project in projects]
+        recommendations: list[IsolationRecommendation] = [
+            self.discoverer.recommend(project, options, config.default_project_venv_name) for project in projects
+        ]
         inventory = self.inventory.discover(config.model_roots)
         role_suggestions = self.inventory.recommend_roles(inventory, available_ram_gb=detect_available_ram_gb())
 

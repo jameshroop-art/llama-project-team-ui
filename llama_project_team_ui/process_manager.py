@@ -60,6 +60,8 @@ class ProcessManager:
         if not approved:
             self.audit_logger.log("start_server", argv, "rejected", None)
             return
+        if profile.id in self.running and self.status(profile.id) == "running":
+            raise ValueError(f"profile '{profile.name}' is already running")
         self.validate_profile_start(profile)
         process = subprocess.Popen(
             argv,

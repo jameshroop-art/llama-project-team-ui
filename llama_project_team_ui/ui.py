@@ -182,6 +182,10 @@ class MainWindow(QMainWindow):
         if not profile.name:
             QMessageBox.warning(self, "Invalid profile", "Profile name is required.")
             return
+        host_check = validate_loopback_host(profile.host)
+        if not host_check.ok and host_check.reason == "invalid host":
+            QMessageBox.warning(self, "Invalid profile", "Host is invalid.")
+            return
         if selected:
             self.config.profiles = [profile if p.id == selected.id else p for p in self.config.profiles]
         else:
