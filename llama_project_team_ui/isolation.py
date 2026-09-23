@@ -30,6 +30,15 @@ class IsolationRecommendation:
 
 
 class IsolationDiscoverer:
+    READ_ONLY_HOST_SHARE_CANDIDATES = (
+        Path("/usr/lib64"),
+        Path("/usr/lib"),
+        Path("/usr/share/vulkan"),
+        Path("/etc/OpenCL/vendors"),
+        Path("/dev/dri"),
+        Path("/etc/machine-id"),
+    )
+
     def discover_projects(self, roots: list[str], venv_name: str = ".venv") -> list[ProjectDiscovery]:
         discoveries: list[ProjectDiscovery] = []
         for root in roots:
@@ -78,6 +87,14 @@ class IsolationDiscoverer:
             distrobox_containers=distrobox_containers,
         )
 
+    def build_readonly_host_mount_args(self, candidates: tuple[Path, ...] | None = None) -> list[str]:
+        mount_args: list[str] = []
+        share_candidates = candidates or self.READ_ONLY_HOST_SHARE_CANDIDATES
+        for share_path in share_candidates:
+            if share_path.exists():
+                mount_args.extend(["--volume", f"{share_path}:{share_path}:ro"])
+        return mount_args
+
     def recommend(
         self, project: ProjectDiscovery, options: IsolationOptions, venv_name: str = ".venv"
     ) -> IsolationRecommendation:
@@ -96,11 +113,13 @@ class IsolationDiscoverer:
             )
         if options.podman_available and options.distrobox_available:
             box_name = Path(project.path).name + "-dev"
+            readonly_mounts = self.build_readonly_host_mount_args()
             return IsolationRecommendation(
                 strategy="create_distrobox",
                 reason=(
                     "Project appears to need stronger isolation or native dependencies; "
-                    "propose creating a distrobox backed by podman."
+                    "propose creating a distrobox backed by podman with host driver/operational "
+                    "paths shared read-only."
                 ),
                 proposed_argv=[
                     "distrobox",
@@ -109,6 +128,7 @@ class IsolationDiscoverer:
                     box_name,
                     "--image",
                     "docker.io/library/fedora:latest",
+                    *readonly_mounts,
                 ],
             )
         return IsolationRecommendation(

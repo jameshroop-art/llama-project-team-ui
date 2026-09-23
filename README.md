@@ -63,6 +63,7 @@ When enabled, Task Master performs **read-only**:
 5. explainable role recommendations with confidence + missing metadata.
 
 No side effects are executed automatically.
+When proposing container creation, host driver/operational paths are mounted as read-only (`:ro`) only.
 
 ## Context quality safeguards
 
