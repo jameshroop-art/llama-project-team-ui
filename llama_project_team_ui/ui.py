@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import shlex
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -134,7 +135,7 @@ class MainWindow(QMainWindow):
         row = self.profile_table.currentRow()
         if row < 0:
             return None
-        profile_id = self.profile_table.item(row, 0).data(1)
+        profile_id = self.profile_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
         for profile in self.config.profiles:
             if profile.id == profile_id:
                 return profile
@@ -144,7 +145,7 @@ class MainWindow(QMainWindow):
         self.profile_table.setRowCount(len(self.config.profiles))
         for idx, profile in enumerate(self.config.profiles):
             name_item = QTableWidgetItem(profile.name)
-            name_item.setData(1, profile.id)
+            name_item.setData(Qt.ItemDataRole.UserRole, profile.id)
             self.profile_table.setItem(idx, 0, name_item)
             self.profile_table.setItem(idx, 1, QTableWidgetItem(profile.role))
             self.profile_table.setItem(idx, 2, QTableWidgetItem(profile.host))
@@ -154,7 +155,7 @@ class MainWindow(QMainWindow):
 
     def collect_profile(self, existing_id: str | None = None) -> LauncherProfile:
         idle = self.idle_shutdown_input.value()
-        extra_args = [token for token in self.extra_args_input.text().split(" ") if token]
+        extra_args = shlex.split(self.extra_args_input.text())
         return LauncherProfile(
             name=self.name_input.text().strip(),
             role=self.role_input.currentText().strip(),
@@ -173,7 +174,11 @@ class MainWindow(QMainWindow):
 
     def add_or_update_profile(self) -> None:
         selected = self.selected_profile()
-        profile = self.collect_profile(existing_id=selected.id if selected else None)
+        try:
+            profile = self.collect_profile(existing_id=selected.id if selected else None)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Invalid extra args", str(exc))
+            return
         if not profile.name:
             QMessageBox.warning(self, "Invalid profile", "Profile name is required.")
             return

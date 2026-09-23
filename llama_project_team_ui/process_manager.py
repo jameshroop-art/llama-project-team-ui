@@ -50,7 +50,7 @@ class ProcessManager:
         if not port_ok.ok:
             raise ValueError(port_ok.reason)
         model_file = Path(profile.model_path).expanduser()
-        if not model_file.is_file() or not model_file.exists():
+        if not model_file.is_file():
             raise ValueError("model path is not readable")
         if is_port_in_use(profile.host, profile.port):
             raise ValueError(f"port {profile.port} is already in use")
@@ -86,10 +86,16 @@ class ProcessManager:
         if not approved:
             self.audit_logger.log("stop_server", [running.profile.name], "rejected", None)
             return
-        running.process.terminate()
-        exit_status = running.process.wait(timeout=10)
-        self.audit_logger.log("stop_server", [running.profile.name], "approved", exit_status)
-        self.running.pop(profile_id, None)
+        try:
+            running.process.terminate()
+            try:
+                exit_status = running.process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                running.process.kill()
+                exit_status = running.process.wait(timeout=5)
+            self.audit_logger.log("stop_server", [running.profile.name], "approved", exit_status)
+        finally:
+            self.running.pop(profile_id, None)
 
     def restart(self, profile: LauncherProfile, approved: bool) -> None:
         self.stop(profile.id, approved)

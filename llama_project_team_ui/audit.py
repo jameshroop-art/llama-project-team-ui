@@ -21,8 +21,8 @@ class AuditEvent:
 
 class AuditLogger:
     def __init__(self, path: Path | None = None):
-        LOG_DIR.mkdir(parents=True, exist_ok=True)
         self.path = path or (LOG_DIR / "actions.jsonl")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def log(
         self,

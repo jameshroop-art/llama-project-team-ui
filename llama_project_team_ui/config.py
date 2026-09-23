@@ -73,7 +73,8 @@ class ConfigStore:
         self.path = path
 
     def ensure_dirs(self) -> None:
-        for directory in (CONFIG_DIR, STATE_DIR, CACHE_DIR, LOG_DIR):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        for directory in (STATE_DIR, CACHE_DIR, LOG_DIR):
             directory.mkdir(parents=True, exist_ok=True)
 
     def load(self) -> AppConfig:

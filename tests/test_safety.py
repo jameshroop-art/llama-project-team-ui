@@ -22,6 +22,7 @@ def test_validate_port_bounds() -> None:
 
 def test_validate_loopback() -> None:
     assert validate_loopback_host("127.0.0.1").ok
+    assert validate_loopback_host("::1").ok
     assert validate_loopback_host("localhost").ok
     assert not validate_loopback_host("0.0.0.0").ok
 

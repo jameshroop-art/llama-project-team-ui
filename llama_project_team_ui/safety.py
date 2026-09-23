@@ -58,9 +58,16 @@ def validate_port(port: int) -> ValidationResult:
 
 
 def is_port_in_use(host: str, port: int) -> bool:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(0.2)
-        return sock.connect_ex((host, port)) == 0
+    try:
+        addresses = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        return False
+    for family, socktype, proto, _, sockaddr in addresses:
+        with socket.socket(family, socktype, proto) as sock:
+            sock.settimeout(0.2)
+            if sock.connect_ex(sockaddr) == 0:
+                return True
+    return False
 
 
 def validate_safe_argv(argv: list[str]) -> ValidationResult:

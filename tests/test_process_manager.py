@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 from llama_project_team_ui.audit import AuditLogger
@@ -43,3 +45,18 @@ def test_start_rejected_is_audited_without_launch(tmp_path: Path) -> None:
     assert profile.id not in manager.running
     text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
     assert '"approval": "rejected"' in text
+
+
+def test_health_status_stopped_and_running(tmp_path: Path) -> None:
+    logger = AuditLogger(path=tmp_path / "audit.jsonl")
+    manager = ProcessManager(logger)
+    profile = LauncherProfile(name="test")
+    assert manager.health(profile.id) == "stopped"
+
+    proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(1)"])
+    manager.running[profile.id] = type("RP", (), {"profile": profile, "process": proc, "log_queue": None})()  # type: ignore[assignment]
+    try:
+        assert manager.health(profile.id) == "running"
+    finally:
+        proc.terminate()
+        proc.wait(timeout=5)
