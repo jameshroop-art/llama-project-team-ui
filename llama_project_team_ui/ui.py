@@ -275,9 +275,10 @@ class MainWindow(QMainWindow):
         try:
             result = self.task_master.plan_read_only(self.config)
         except Exception as exc:
-            QTimer.singleShot(0, lambda: self.log_output.append(f"Task Master planning failed: {exc}"))
+            message = f"Task Master planning failed: {exc}"
+            QTimer.singleShot(0, lambda msg=message: self.log_output.append(msg))
             return
-        QTimer.singleShot(0, lambda: self._render_task_master_plan(result))
+        QTimer.singleShot(0, lambda plan=result: self._render_task_master_plan(plan))
 
     def _render_task_master_plan(self, result) -> None:
         self.log_output.append("Task Master read-only planning complete. No actions executed.")
@@ -291,6 +292,8 @@ class MainWindow(QMainWindow):
             self.log_output.append(f"Discovered GGUF models: {len(result.model_inventory)}")
 
     def open_new_window(self) -> None:
+        if not self.enforce_venv_for_execution():
+            return
         python_exe = sys.executable
         module_name = "llama_project_team_ui.main"
         subprocess.Popen([python_exe, "-m", module_name])

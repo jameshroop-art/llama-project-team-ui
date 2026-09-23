@@ -22,6 +22,7 @@ class ProcessManager:
     def __init__(self, audit_logger: AuditLogger):
         self.audit_logger = audit_logger
         self.running: dict[str, RunningProcess] = {}
+        self._lock = threading.RLock()
 
     def _server_argv_preview(self, profile: LauncherProfile) -> list[str]:
         argv = [
@@ -64,8 +65,9 @@ class ProcessManager:
             argv = self._server_argv_preview(profile)
             self.audit_logger.log("start_server", argv, "rejected", None)
             return
-        if profile.id in self.running and self.status(profile.id) == "running":
-            raise ValueError(f"profile '{profile.name}' is already running")
+        with self._lock:
+            if profile.id in self.running and self.status(profile.id) == "running":
+                raise ValueError(f"profile '{profile.name}' is already running")
         argv = self.build_server_argv(profile)
         self.validate_profile_start(profile)
         process = subprocess.Popen(
@@ -75,7 +77,8 @@ class ProcessManager:
             text=True,
         )
         queue: Queue[str] = Queue()
-        self.running[profile.id] = RunningProcess(profile=profile, process=process, log_queue=queue)
+        with self._lock:
+            self.running[profile.id] = RunningProcess(profile=profile, process=process, log_queue=queue)
 
         def pump() -> None:
             if process.stdout is None:
@@ -87,7 +90,8 @@ class ProcessManager:
         self.audit_logger.log("start_server", argv, "approved", None)
 
     def stop(self, profile_id: str, approved: bool) -> None:
-        running = self.running.get(profile_id)
+        with self._lock:
+            running = self.running.get(profile_id)
         if not running:
             return
         if not approved:
@@ -102,16 +106,17 @@ class ProcessManager:
                 exit_status = running.process.wait(timeout=5)
             self.audit_logger.log("stop_server", [running.profile.name], "approved", exit_status)
         finally:
-            self.running.pop(profile_id, None)
+            with self._lock:
+                self.running.pop(profile_id, None)
 
     def restart(self, profile: LauncherProfile, approved: bool) -> None:
-        was_running = profile.id in self.running and self.status(profile.id) == "running"
         self.stop(profile.id, approved)
-        if approved and was_running:
+        if approved:
             self.start(profile, approved)
 
     def status(self, profile_id: str) -> str:
-        running = self.running.get(profile_id)
+        with self._lock:
+            running = self.running.get(profile_id)
         if not running:
             return "stopped"
         code = running.process.poll()
@@ -121,7 +126,8 @@ class ProcessManager:
         return self.status(profile_id)
 
     def collect_logs(self, profile_id: str) -> list[str]:
-        running = self.running.get(profile_id)
+        with self._lock:
+            running = self.running.get(profile_id)
         if not running:
             return []
         lines: list[str] = []

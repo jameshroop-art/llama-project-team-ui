@@ -57,7 +57,7 @@ class GGUFInventory:
             info.context_length = self._context_length_from_fields(fields)
             info.tokenizer = self._field_string(fields, "tokenizer.ggml.model")
             if "tokenizer.chat_template" in fields:
-                info.chat_template = self._field_string(fields, "tokenizer.chat_template") is not None
+                info.chat_template = bool(self._field_value(fields, "tokenizer.chat_template"))
             fim_keys = [key for key in fields if key.startswith("tokenizer.fim")]
             if fim_keys:
                 info.fim = True
@@ -71,18 +71,31 @@ class GGUFInventory:
 
     @staticmethod
     def _field_string(fields: dict, name: str) -> str | None:
-        value = fields.get(name)
-        return str(value.parts[-1]) if value and getattr(value, "parts", None) else None
+        value = GGUFInventory._field_value(fields, name)
+        if value is None:
+            return None
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="ignore")
+        if isinstance(value, str):
+            return value
+        return None
 
     @staticmethod
     def _field_int(fields: dict, name: str) -> int | None:
+        value = GGUFInventory._field_value(fields, name)
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _field_value(fields: dict, name: str):
         value = fields.get(name)
         if not value or not getattr(value, "parts", None):
             return None
-        try:
-            return int(value.parts[-1])
-        except Exception:
-            return None
+        return value.parts[-1]
 
     def _context_length_from_fields(self, fields: dict) -> int | None:
         for key in (
