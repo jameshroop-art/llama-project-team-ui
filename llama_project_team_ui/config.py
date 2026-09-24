@@ -18,6 +18,10 @@ ROLE_PRESETS = [
 ]
 
 
+def default_llama_server_path() -> str:
+    return "~/.local/bin/llama-server-cuda13"
+
+
 def _xdg_path(env_name: str, fallback_suffix: str) -> Path:
     env_val = os.environ.get(env_name)
     if env_val:
@@ -36,7 +40,7 @@ CONFIG_PATH = CONFIG_DIR / "config.json"
 class LauncherProfile:
     name: str
     role: str = "Custom"
-    llama_server_path: str = ""
+    llama_server_path: str = field(default_factory=default_llama_server_path)
     model_path: str = ""
     projector_path: str = ""
     host: str = "127.0.0.1"

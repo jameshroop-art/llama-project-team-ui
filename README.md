@@ -36,8 +36,30 @@ Run:
 
 - Copy `examples/config.example.json` into your config path:
   - `${XDG_CONFIG_HOME:-~/.config}/llama-project-team-ui/config.json`
+- Fresh profiles should use the portable default `~/.local/bin/llama-server-cuda13` for **llama-server Binary**.
 - Set your own model roots and workspace roots.
 - Model scanning for `.gguf` is limited to configured roots only.
+- Existing saved profiles keep their current `llama_server_path`; update older profiles through the UI if they still point at an LM Studio backend.
+
+Create the expected wrapper at `~/.local/bin/llama-server-cuda13`:
+
+```bash
+cat <<'EOF' > "$HOME/.local/bin/llama-server-cuda13"
+#!/usr/bin/env bash
+set -euo pipefail
+
+CUDA_HOME="$HOME/.local/cuda-13.4.1/linux-x86_64"
+BUILD="$HOME/Projects/llama.cpp/build-cuda-5090"
+
+export LD_LIBRARY_PATH="$CUDA_HOME/lib:$BUILD/bin${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+exec "$BUILD/bin/llama-server" "$@"
+EOF
+
+chmod +x "$HOME/.local/bin/llama-server-cuda13"
+```
+
+This repository does not bundle user-specific CUDA installs, model paths, or build directories beyond that per-user wrapper example; the saved launcher path should point to the wrapper, not directly to an LM Studio backend under `.lmstudio/extensions/backends/...`.
 
 ## Multi-port profiles and roles
 

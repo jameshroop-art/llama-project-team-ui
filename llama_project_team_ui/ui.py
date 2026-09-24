@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from .audit import AuditLogger
-from .config import ConfigStore, LauncherProfile, ROLE_PRESETS
+from .config import ConfigStore, LauncherProfile, ROLE_PRESETS, default_llama_server_path
 from .process_manager import ProcessManager
 from .safety import in_virtualenv, remediation_instructions, validate_loopback_host
 from .task_master import TaskMasterPlanner
@@ -51,7 +51,7 @@ class MainWindow(QMainWindow):
         self.name_input = QLineEdit()
         self.role_input = QComboBox()
         self.role_input.addItems(ROLE_PRESETS)
-        self.server_input = QLineEdit()
+        self.server_input = QLineEdit(default_llama_server_path())
         self.model_input = QLineEdit()
         self.projector_input = QLineEdit()
         self.host_input = QLineEdit("127.0.0.1")

@@ -34,6 +34,20 @@ def test_build_server_argv_includes_expected_flags(tmp_path: Path) -> None:
     assert "--temp" in argv
 
 
+def test_build_server_argv_expands_user_in_server_path(tmp_path: Path) -> None:
+    logger = AuditLogger(path=tmp_path / "audit.jsonl")
+    manager = ProcessManager(logger)
+    profile = LauncherProfile(
+        name="test",
+        llama_server_path="~/.local/bin/llama-server-cuda13",
+        model_path="/tmp/model.gguf",
+    )
+
+    argv = manager.build_server_argv(profile)
+
+    assert argv[0] == str(Path.home() / ".local/bin/llama-server-cuda13")
+
+
 def test_start_rejected_is_audited_without_launch(tmp_path: Path) -> None:
     logger = AuditLogger(path=tmp_path / "audit.jsonl")
     manager = ProcessManager(logger)
