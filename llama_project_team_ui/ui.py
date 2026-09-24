@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from .audit import AuditLogger
-from .config import AppConfig, ConfigStore, LauncherProfile, ROLE_PRESETS
+from .config import ConfigStore, LauncherProfile, ROLE_PRESETS
 from .process_manager import ProcessManager
 from .safety import in_virtualenv, remediation_instructions, validate_loopback_host
 from .task_master import TaskMasterPlanner
