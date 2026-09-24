@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=llama-project-team-ui
+Comment=Host-only llama-server launcher GUI
+Exec=/home/you/.local/venvs/llama-project-team-ui/bin/python -m llama_project_team_ui.main
+TryExec=/home/you/.local/venvs/llama-project-team-ui/bin/python
+Terminal=false
+StartupNotify=true
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=30

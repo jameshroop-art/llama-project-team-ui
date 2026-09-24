@@ -1,0 +1,47 @@
+{
+  "workspace_roots": [
+    "/home/you/projects"
+  ],
+  "approved_workspace_roots": [
+    "/home/you/projects"
+  ],
+  "model_roots": [
+    "/home/you/models"
+  ],
+  "profiles": [
+    {
+      "name": "Task Master",
+      "role": "Task Master",
+      "llama_server_path": "/home/you/.local/opt/llama-server/llama-server",
+      "model_path": "/home/you/models/task-master.gguf",
+      "projector_path": "",
+      "host": "127.0.0.1",
+      "port": 8080,
+      "ctx_size": 8192,
+      "gpu_layers": 0,
+      "extra_args": [],
+      "start_mode": "always_on",
+      "idle_shutdown_minutes": null,
+      "enabled": true,
+      "id": "replace-me"
+    },
+    {
+      "name": "Vision Specialist",
+      "role": "Vision Specialist",
+      "llama_server_path": "/home/you/.local/opt/llama-server/llama-server",
+      "model_path": "/home/you/models/vision.gguf",
+      "projector_path": "/home/you/models/mmproj.gguf",
+      "host": "127.0.0.1",
+      "port": 8085,
+      "ctx_size": 8192,
+      "gpu_layers": 0,
+      "extra_args": [],
+      "start_mode": "on_demand",
+      "idle_shutdown_minutes": 10,
+      "enabled": true,
+      "id": "replace-me-too"
+    }
+  ],
+  "task_master_enabled": false,
+  "default_project_venv_name": ".venv"
+}
