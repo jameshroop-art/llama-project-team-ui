@@ -12,7 +12,7 @@
     {
       "name": "Task Master",
       "role": "Task Master",
-      "llama_server_path": "/home/you/.local/opt/llama-server/llama-server",
+      "llama_server_path": "~/.local/bin/llama-server-cuda13",
       "model_path": "/home/you/models/task-master.gguf",
       "projector_path": "",
       "host": "127.0.0.1",
@@ -28,7 +28,7 @@
     {
       "name": "Vision Specialist",
       "role": "Vision Specialist",
-      "llama_server_path": "/home/you/.local/opt/llama-server/llama-server",
+      "llama_server_path": "~/.local/bin/llama-server-cuda13",
       "model_path": "/home/you/models/vision.gguf",
       "projector_path": "/home/you/models/mmproj.gguf",
       "host": "127.0.0.1",
