@@ -21,6 +21,7 @@ def test_role_scoring_handles_missing_metadata() -> None:
     assert suggestions["Implementer"][0].model_path == "/models/unknown.gguf"
     assert suggestions["Implementer"][0].context_budget["role"] == "implementer"
     assert suggestions["Implementer"][0].context_budget["ctx_size"] == 8192
+    assert suggestions["Implementer"][0].context_budget["guardrail_status"] == "ok"
 
 
 def test_read_metadata_keeps_missing_fields(monkeypatch, tmp_path: Path) -> None:

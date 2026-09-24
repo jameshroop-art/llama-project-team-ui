@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 from pydantic import BaseModel, Field
 
@@ -71,6 +71,12 @@ class RoleContextBudget:
     max_response_tokens: int
     checkpoint_format: str = "structured_json"
     auto_compact: bool = True
+    reserve_output_pct: float = 0.0
+    compact_at_pct: float = 0.0
+    hard_stop_at_pct: float = 0.0
+    max_response_pct: float = 0.0
+    guardrail_status: str = "ok"
+    guardrail_issues: list[str] = field(default_factory=list)
 
     @classmethod
     def from_capacity(
@@ -83,6 +89,7 @@ class RoleContextBudget:
         compact = int(ctx_size * policy.compact_at)
         hard_stop = int(ctx_size * policy.hard_stop_at)
         max_response = int(ctx_size * policy.max_response)
+        guardrail_issues = cls._guardrail_issues(ctx_size, reserve, compact, hard_stop, max_response)
         return cls(
             role=role.lower().replace(" ", "_"),
             endpoint=endpoint,
@@ -91,7 +98,34 @@ class RoleContextBudget:
             compact_at_tokens=compact,
             hard_stop_at_tokens=hard_stop,
             max_response_tokens=max_response,
+            reserve_output_pct=policy.reserve_output,
+            compact_at_pct=policy.compact_at,
+            hard_stop_at_pct=policy.hard_stop_at,
+            max_response_pct=policy.max_response,
+            guardrail_status=("warning" if guardrail_issues else "ok"),
+            guardrail_issues=guardrail_issues,
         )
 
     def as_dict(self) -> dict:
         return asdict(self)
+
+    @staticmethod
+    def _guardrail_issues(
+        ctx_size: int,
+        reserve_output_tokens: int,
+        compact_at_tokens: int,
+        hard_stop_at_tokens: int,
+        max_response_tokens: int,
+    ) -> list[str]:
+        issues: list[str] = []
+        if reserve_output_tokens <= 0:
+            issues.append("reserve_output_tokens must be > 0")
+        if compact_at_tokens <= reserve_output_tokens:
+            issues.append("compact_at_tokens should be greater than reserve_output_tokens")
+        if hard_stop_at_tokens <= compact_at_tokens:
+            issues.append("hard_stop_at_tokens should be greater than compact_at_tokens")
+        if hard_stop_at_tokens >= ctx_size:
+            issues.append("hard_stop_at_tokens should be less than ctx_size")
+        if max_response_tokens > reserve_output_tokens:
+            issues.append("max_response_tokens should not exceed reserve_output_tokens")
+        return issues
