@@ -72,6 +72,7 @@ When proposing container creation, host driver/operational paths are mounted as 
 - compact threshold and hard-stop threshold.
 
 `StructuredCheckpoint` (Pydantic schema) includes objective, completed work, decisions, current state, relevant files, commands/results, remaining work, risks/questions, and next-agent instruction.
+Role suggestions also include a context budget breakdown from role-specific percentages of model context capacity (`reserve_output_tokens`, `compact_at_tokens`, `hard_stop_at_tokens`, `max_response_tokens`).
 
 ## Autostart example
 

@@ -5,6 +5,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from .context_policy import RoleContextBudget
+
 
 @dataclass
 class GGUFModelInfo:
@@ -31,9 +33,19 @@ class RoleSuggestion:
     score: float
     confidence: str
     rationale: str
+    context_budget: dict | None = None
 
 
 class GGUFInventory:
+    ROLE_ENDPOINTS = {
+        "Task Master": "http://127.0.0.1:8080",
+        "Architect": "http://127.0.0.1:8081",
+        "Implementer": "http://127.0.0.1:8082",
+        "Reviewer": "http://127.0.0.1:8083",
+        "Test/Debug": "http://127.0.0.1:8084",
+        "Vision Specialist": "http://127.0.0.1:8085",
+    }
+
     def discover(self, roots: list[str]) -> list[GGUFModelInfo]:
         discovered: list[GGUFModelInfo] = []
         for root in roots:
@@ -159,6 +171,7 @@ class GGUFInventory:
                         score=score,
                         confidence=model.confidence,
                         rationale=rationale,
+                        context_budget=self._context_budget_for(role, model),
                     )
                 )
         for role in roles:
@@ -196,6 +209,12 @@ class GGUFInventory:
             rationale.append("metadata partially heuristic")
 
         return score, "; ".join(rationale) if rationale else "limited metadata"
+
+    def _context_budget_for(self, role: str, model: GGUFModelInfo) -> dict:
+        ctx_size = model.context_length or 8192
+        endpoint = self.ROLE_ENDPOINTS.get(role, "http://127.0.0.1:8080")
+        budget = RoleContextBudget.from_capacity(role=role, endpoint=endpoint, ctx_size=ctx_size)
+        return budget.as_dict()
 
 
 def detect_available_ram_gb() -> float | None:
