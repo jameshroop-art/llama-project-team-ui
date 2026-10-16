@@ -4,7 +4,7 @@ This project targets private, single-user, local-first use. It is not a hardened
 
 ## Current controls and limitations
 
-- The UI blocks execution actions outside a Python virtual environment. A venv isolates dependencies, not filesystem access, processes, or networking.
+- Run the application inside a private Python virtual environment. The UI blocks Start outside a detected venv, but Restart does not repeat this check and can launch a stopped profile. Do not rely on universal venv enforcement. A venv isolates dependencies, not filesystem access, processes, or networking.
 - Server commands are constructed as argv arrays, not shell-interpolated strings. Validation rejects selected host package-management commands, pip-install patterns, and shell markers; this is not a general-purpose sandbox.
 - Profiles default to `127.0.0.1`. Non-loopback binding requires confirmation; private-use deployments should retain loopback and avoid exposing model or preview ports.
 - Start/stop/restart/remove actions require confirmation. Process start/stop audit entries record approval and execution details, not every UI/config operation.

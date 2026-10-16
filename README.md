@@ -63,7 +63,7 @@ References include screenshots, docs, URLs, code samples, and style guides. Keep
 
 ## Safety and limitations
 
-- Run locally in a private venv; execution actions are blocked outside it. A venv is not a security sandbox.
+- Always run locally in a private venv. The UI's Start action checks for one, but Restart currently does not repeat that check. A venv is not a security sandbox.
 - Commands use argv arrays without shell interpolation. Host package management and global/`--user` pip installs are prohibited execution actions.
 - Default bind host is `127.0.0.1`; non-loopback binding requires explicit confirmation and is outside the intended private-use deployment.
 - Start/stop/restart/remove actions require confirmation. Future writes must be approval-gated and confined to the selected workspace.
