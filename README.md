@@ -16,6 +16,8 @@ Optional online research → concept dossier → local instruction adapter
 
 **Planned, not implemented:** online research clients, concept dossiers and task-card adaptation, automated role handoffs, workspace editing, Node orchestration and Vite preview, reference retrieval, screenshot-based verification, live token/VRAM counters, automatic compaction, and role LoRA management/training. Independent server ports do not coordinate themselves. No online research provider is required or configured by this launcher.
 
+Also planned: keyword noun/action extraction, ordered request **CHUNKS**, mount-time diagnostics cached in recallable profiles keyed by model hash-ID, step-by-step research coverage and concept approval, and optional sandboxed VSCodium editing/terminal collaboration. These are design requirements, not available launcher operations.
+
 ## Install and run (private venv only)
 
 From the repository root, with Python 3.11 or newer:
@@ -46,10 +48,10 @@ Config, state, cache, and logs use XDG user directories. Process start/stop audi
 
 The phased workflow in DESIGN.md starts with one user, one project, and one active task:
 
-1. Scope a small change or app with acceptance criteria, constraints, and references.
-2. Optionally gather public online research into a cited concept dossier; offline intake must remain possible.
-3. Validate it locally and create policy-checked, budgeted task cards for approval.
-4. Route approved cards to local roles; review diffs and approve writes and dependency changes.
+1. Preserve the original request; extract keyword nouns/actions and a concept summary, retaining every constraint in ordered requirement-linked chunks.
+2. Diagnose mounted models, recall hash-keyed profiles, and budget/re-tokenize chunks against current effective limits. Relay context incrementally in request order.
+3. Optionally search approved public keywords and extract text/relevant images into a cited dossier. Track coverage of every requested step; research gaps within bounded budgets or report blockers. Offline intake remains possible.
+4. Obtain user verification of the concept, then collaborate with local LLM/VLM roles on a plan for the specified sandbox. Approve task cards separately from writes, dependency changes, and terminal operations; optional VSCodium integration uses the same sandbox and approval broker.
 5. Verify with existing checks and a bounded screenshot-based visual QA loop.
 6. Save checkpoints before context pressure or model swaps; track tokens and VRAM rather than silently dropping history.
 

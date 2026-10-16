@@ -20,6 +20,8 @@ Research providers, search results, redirects, fetched pages, repositories, and 
 
 Online access is opt-in per run. Default outbound content is only the user-reviewed goal and public context. Do not send workspace code, private references, screenshots, local paths, logs, checkpoints, or secrets by default. Sharing specific non-secret private material requires explicit, itemized approval of payload and destination. Credentials must never be included in model prompts.
 
+Derived keywords, noun/action summaries, chunk excerpts, and image search queries can disclose private request details too. Apply the same outbound review to the actual search payload; extraction or summarization is not anonymization. Scrape only permitted resources, respecting access restrictions and licensing; limit document/image sizes and decode or extract in isolation without running page scripts.
+
 Approve providers and search/fetch destinations explicitly, including their retention/training terms. Provider fallback must remain within the approved destination/data policy; otherwise pause for approval. Offline work must not silently trigger network requests.
 
 Restrict fetch tools to approved HTTP(S) destinations, bound response sizes/time/retries, and validate every redirect and resolved address. Block loopback, private/link-local networks, cloud metadata endpoints, and local file schemes; recheck at connection time to address DNS rebinding. Local model endpoints belong to a separate tool boundary, never the generic web fetcher. Do not execute downloaded scripts, page instructions, or repository hooks. Enforce network restrictions at the execution boundary, not only through prompts.
@@ -40,6 +42,8 @@ Confine reads and writes to explicitly approved project scope, with separate rea
 
 Keep writes staged/reviewable and checkpoint before mutations. Dependency installs, destructive operations, and changes to scope require explicit approval. Do not treat a planning approval as blanket permission for future edits or package scripts. Audit approvals and results with sensitive values redacted.
 
+Concept verification, sandbox/plan approval, and operation approval are separate gates. Bind each to its request/concept/environment revision; user edits invalidate affected permissions. An incomplete coverage ledger must surface gaps, not authorize implied scope. Research exhaustion pauses for user direction instead of permitting indefinite searches or unapproved implementation.
+
 ### 4. No shell interpolation or host administration
 
 Invoke only allowlisted executables with validated argv arrays, a controlled working directory, and a minimal environment. Never pass model text to a shell, `eval`, command substitution, or an interpreter as arbitrary executable code. Argv arrays avoid shell expansion but do not prevent dangerous executable options or malicious package lifecycle scripts; validate semantics too.
@@ -54,11 +58,21 @@ Generated applications, their dependencies, preview servers, and browser pages c
 
 Obtain model weights, projectors, and LoRAs from trusted sources; record hashes, compatibility, and licenses. Treat loaders and custom model code as executable attack surfaces. Model recommendations or successful loading do not establish trust.
 
+### VSCodium and terminal operations (planned)
+
+Use a dedicated editor profile with reviewed extensions and restricted workspace trust. Do not auto-enable repository tasks, debugger launches, terminal profiles, or extension recommendations. Run the editor within the sandbox or use a reviewed bridge enforcing the same boundaries; opening a folder on the host does not isolate its extensions.
+
+Agent operations must go through the validated argv/approval broker inside the specified sandbox, never terminal text injection, shell pasting, or an unrestricted editor command API. Show the working directory, executable/arguments, environment changes, network needs, and side effects for approval. Require narrow mounts, minimal environment, resource/time/output limits, cancellation, and redacted results. If isolation cannot be confirmed, deny execution rather than falling back to the host. Manual user terminal commands are outside these guarantees.
+
+Treat terminal output, escape sequences, hyperlinks, build logs, and extension messages as untrusted data; sanitize display and never convert output into commands automatically. Reconcile unsaved editor buffers and disk/base revisions before mutations; stale approvals must not overwrite concurrent work.
+
 ### 6. Local storage, checkpoints, and resource safety
 
 Use private XDG config/state/cache locations and project-scoped stores with restrictive permissions. Store API credentials in an OS credential store or a protected configuration outside the repository, never source control, task cards, screenshots, or audit logs. Do not claim local storage is encrypted by the application; use OS disk encryption and appropriate backups if needed.
 
 Research archives, references, logs, and checkpoints may contain sensitive content. Retain provenance without recording secrets, provide deliberate retention/deletion controls, and require consent before dataset export or training. Do not upload diagnostics automatically.
+
+Ordered request chunks and coverage ledgers need the same privacy/retention controls as originals. Preserve request hashes, source spans, sequence/dependency links, and unresolved requirements across compaction; summaries cannot grant permissions. Store model diagnostics separately from request content, validate their schema and component/runtime fingerprint on recall, and recheck current context/memory on mount. A matching weight hash is identity, not proof of trust or current capacity. Hashing and capability probes must be read-only, resource-bounded, and confined to approved model assets.
 
 Validate checkpoint provenance, workspace revision, scope, and policy on resume; restoring a checkpoint must not restore stale approvals as new authorization. Persist and validate checkpoints before compaction or model unloading. Fail closed when token budgets, image costs, or VRAM headroom cannot be established conservatively. Resource exhaustion must pause work, not bypass safeguards or discard constraints silently.
 

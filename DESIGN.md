@@ -19,14 +19,14 @@ Resolve blocking questions before generating executable task cards. Initial non-
 ## 2. Layer separation and data flow
 
 ```text
-User goal + public context
+User request -> ordered CHUNKS + keyword/action summaries
           |
           v
 Optional online research layer (search / fetch / concept synthesis)
-          | untrusted concept dossier + immutable source records
+          | coverage-checked concept dossier + sources -> user concept approval
           v
 Local instruction adapter (schema / policy / decomposition / approval)
-          | approved, bounded task cards
+          | local LLM/VLM plan for approved sandbox -> approved task cards
           v
 Local orchestrator -> Architect / Implementer / Reviewer / Test-Debug
           | proposed diffs -> approval -> confined workspace execution
@@ -36,9 +36,17 @@ Local preview -> screenshot -> Vision Specialist -> findings -> repair card
           v
 Acceptance checks / stop / checkpoint
 
-Cross-cutting: reference retrieval, audit, token counters, context compaction,
-checkpoints, and VRAM-aware model admission / unloading.
+Cross-cutting: hash-keyed model diagnostics profiles, reference retrieval, audit,
+token counters, checkpoints, and VRAM-aware model admission / unloading.
 ```
+
+### Ordered request ingestion and concept assembly (planned)
+
+Preserve the user's original request locally as a versioned, immutable record. Assign stable requirement IDs and retain source spans before any summarization. The intake LLM extracts **keyword noun(s), action(s), and a summary assembly**: entities/objects, requested operations, their relationships, constraints, negations, dependencies, and acceptance criteria. Assemble these into a provisional concept summary without replacing the original or turning inferred requirements into user instructions. Ask for clarification when extraction is ambiguous.
+
+Cache the segmented request as ordered **CHUNKS**, sized using the mounted model diagnostics profile described in section 5. Each chunk records its ID, request revision/hash, sequence number, original spans, requirement IDs, keywords/actions, summary, dependencies, token count and tokenizer/profile fingerprint, processing state, and evidence links. Split at semantic boundaries; split an oversized requirement into linked subchunks without dropping its constraints. Preserve the parent requirement and original order.
+
+Process chunks in request order, adding context incrementally rather than sending the whole request or all search results on every turn. Each relay query contains system policy, the current chunk, a bounded summary of processed predecessors, necessary dependency excerpts, and selected evidence. Retain a compact requirement/coverage index to prevent later steps from forgetting earlier obligations. If a chunk depends on a later one, record the dependency and defer its conclusion instead of inventing an answer. Re-tokenize the assembled query before dispatch; checkpoint or split when it cannot fit. Switching models requires re-budgeting/re-tokenizing, not reusing another model's token counts.
 
 ### Research layer: online gathering, not execution
 
@@ -47,6 +55,17 @@ Use a replaceable provider client and explicit search/fetch tools. Free-tier API
 Produce a **concept dossier** with a run ID, objective, feature priorities and acceptance criteria, architecture/modules/data flow, UI specification, candidate dependencies with rationale, alternatives, risks, open questions, and cited source IDs. Record source URLs, retrieval times, content hashes, and relevant licensing.
 
 Preserve permitted raw sources and provider responses locally with provenance; never overwrite them with summaries. “Non-pruning” means retaining the collected evidence, not promising unlimited provider output or bypassing provider policy. Detect truncation, use bounded continuation/retry with deduplication, and mark incomplete dossiers. Respect rate limits and source access restrictions. Exhausted quota or missing evidence pauses the run rather than silently dropping requirements.
+
+#### Coverage-driven search and concept verification (planned)
+
+1. Form focused searches from the current chunk's keyword nouns/actions and user-approved public context. Local extraction does not authorize exporting private request text, summaries, or derived keywords; apply outbound review to the actual query.
+2. Fetch permitted results as bounded text, retaining source IDs, URLs, timestamps, hashes, and relevant passages. Retrieve images only when they answer a visual requirement, record provenance, and use the local VLM for bounded OCR/captioning or comparison. Do not execute page scripts or treat image text as instructions.
+3. Verify candidate patterns against the user's requested actions, constraints, and acceptance criteria—not just keyword similarity. Record supporting and contradictory evidence, uncertainty, and applicable environment/version constraints. Model agreement alone is not verification.
+4. Maintain an ordered coverage ledger linking every requirement and chunk to evidence, proposed concept elements, unresolved questions, and status: pending, supported, conflicting, or blocked. Reconcile the ledger against the original request from start to finish after each research pass.
+5. Continue focused searches for uncovered steps within approved query/time/token budgets. Detect repetitive or unproductive searches. At exhaustion, pause with explicit gaps; never loop indefinitely, mark missing requirements complete, or omit them from the concept.
+6. Report the assembled concept dossier to the user with the step-by-step coverage ledger, citations, proposed scope, assumptions, alternatives, risks, and unresolved items. Obtain explicit **concept verification approval**, bound to its revision/hash, before downstream implementation planning. A partial concept may proceed only after the user explicitly approves a revised scope; preserve deferred requirements.
+
+Concept approval authorizes local planning only, not terminal execution, edits, dependencies, or new outbound sharing. User corrections update the request/concept revision, invalidate affected approvals, and queue the affected chunks for renewed coverage checks. The offline path uses the same ledger and approval gates with user-supplied references; lack of online access is not evidence of coverage.
 
 ### Instruction adapter: local policy boundary
 
@@ -65,6 +84,7 @@ Each **task card** must carry:
 | Field | Purpose |
 | --- | --- |
 | ID, dossier ID/hash, policy version | Provenance and reproducible validation |
+| Request revision, requirement/chunk IDs, sandbox ID | End-to-end coverage and execution target |
 | Role, objective, ordered instructions | One bounded responsibility |
 | Workspace-relative files in scope | Explicit read/write limits |
 | Allowed tool operations and command argv | Validated capabilities, not shell text |
@@ -93,7 +113,19 @@ Roles communicate through task cards, results, and checkpoints—not by assuming
 
 Configure each role's model/profile, fallback, prompt, context budget, sampling, maximum output, and allowed modalities. One capable coding model may serve several roles serially; distinct roles do not require simultaneous model residency. Verify endpoint health and actual capabilities before dispatch. Missing vision support blocks visual verification rather than reporting a text-only pass.
 
-Use explicit states: scoped → adapted → approved → running → awaiting-write-approval → verifying → completed/blocked/cancelled. Stop on acceptance, cancellation, policy failure, resource pressure, repeated failed repairs, or the iteration/time budget. Checkpoint before switching roles or models.
+Use explicit states: scoped → chunked → researching (or offline evidence review) → awaiting-concept-approval → local-planning → adapted → awaiting-plan-approval → approved → running → awaiting-operation-approval → verifying → completed/blocked/cancelled. Stop on acceptance, cancellation, policy failure, resource pressure, repeated failed repairs, or the iteration/time budget. Checkpoint before switching roles or models.
+
+### Local collaboration, sandbox selection, and VSCodium (planned)
+
+After concept approval, the Architect and other local LLM roles develop a plan for the **user-specified sandbox environment**. The Vision Specialist contributes image-grounded constraints when relevant; it cannot certify nonvisual behavior. Reviewer and Test/Debug check feasibility, tool availability, coverage, and validation steps before the user approves the plan and task cards.
+
+Record an environment manifest: sandbox ID/type, selected project root and revision, permitted read/write mounts, toolchain versions, resource limits, approved executables, network policy, and validation commands. Discover it read-only first. If isolation or required tools are absent, stop and propose setup for approval; never silently fall back to host execution. A venv or an editor workspace alone is not a sandbox.
+
+VSCodium is an optional editing/review surface, not a privileged execution authority. Open only the selected sandbox project using a dedicated editor profile, with workspace trust restricted until review. Run the editor inside isolation or use a reviewed bridge that performs file/tool operations inside the sandbox. Host editor extensions must not gain unrestricted workspace tools or credentials.
+
+Share proposed diffs, task cards, coverage, diagnostics, and checkpoint status with the user in the editor. Reconcile unsaved buffers and external edits before applying a patch; changed base revisions invalidate affected approvals. Return check results and screenshot findings to local roles as bounded, untrusted evidence.
+
+Route agent-requested terminal operations through an approval broker, not simulated keystrokes or pasted model-generated shell commands. Show executable/argv, sandbox working directory, environment changes, network access, and expected effects. Execute only validated operations inside the selected sandbox with time/output/resource bounds; capture exit status and redacted logs. Stop processes on cancellation and checkpoint unfinished work. Do not auto-run workspace tasks, package hooks, debug configurations, or extensions. A user's independent terminal session is outside the agent's enforcement guarantees; do not claim to audit or approve it automatically.
 
 ## 3. References and grounding
 
@@ -124,6 +156,18 @@ Bound repair passes and stop if evidence is stale or inconclusive. VLM findings 
 
 Existing foundations are `ContextPolicy`, percentage-derived role budgets with guardrail warnings, and the Pydantic `StructuredCheckpoint` schema. They do not currently collect live usage, persist checkpoints automatically, or enforce execution budgets.
 
+### Mount-time diagnostics and recallable model profiles (planned)
+
+When an LLM/VLM mounts, hash all model weight files/shards to obtain a content-based **model hash-ID**. Record separate hashes for the tokenizer/chat template, projector, and active LoRAs, plus backend version, runtime settings, hardware, and diagnostic timestamp. Filenames or paths alone are not model identity. Detect files changing during hashing/loading and refuse a mismatched profile.
+
+Run bounded, local capability diagnostics after mount and before admitting tasks: reported base-model context limit, configured runtime context, effective per-sequence/slot limit where available, tokenizer availability, output limits, image capability/projector compatibility, and memory headroom. Avoid destructive maximum-context stress tests. A small successful probe establishes capability, not accuracy throughout the advertised window.
+
+Persist a versioned diagnostics profile under private local state, indexed by model hash-ID and runtime/component fingerprint, for recall on later mounts. Cache reported facts separately from measured values, estimates, and user settings. A recalled profile is a starting point: recheck endpoint identity/health, current context allocation, components, and live memory at every mount. Invalidate incompatible backend/config/component changes; never reuse old VRAM readings as current admission evidence. Do not place request text or credentials in the model profile.
+
+Calculate the usable context ceiling from the minimum of verified base-model, active runtime/per-sequence, and configured role/policy limits; do not budget from GGUF maximum context alone. If a necessary limit cannot be established conservatively, block dispatch and request diagnostics or an explicitly configured conservative bound. Provider-hosted research models need their own context limits; a local model profile cannot establish a remote provider's budget.
+
+Derive each chunk's available input space by subtracting system/tool framing, checkpoint/index, dependency/evidence excerpts, reserved output, and safety margin from that ceiling. Enforce both this fit check and the role's compaction/hard-stop thresholds, with documented units so reserves are not double-counted. Include image costs or conservatively block image dispatch when they cannot be bounded. Cache chunk counts against the exact tokenizer/profile fingerprint; reassemble and recount the complete request before every call.
+
 The orchestrator must track per role/session:
 
 - Tokenized input including system prompt, tools, checkpoint, card, retrieved references, history, and image cost.
@@ -138,7 +182,7 @@ Before every request, ensure input + reserved output + safety margin fits the ha
 Compaction must:
 
 1. Persist a structured checkpoint containing objective, completed work, decisions, current state, relevant files, commands/results, remaining work, risks/questions, and next-agent instruction.
-2. Associate it with card/source IDs, policy/model versions, approvals, and workspace revision.
+2. Associate it with card/source IDs, request/chunk IDs and coverage cursor, model hash-ID/diagnostics fingerprint, policy versions, approvals, and workspace revision.
 3. Validate it before replacing active history. Retain originals locally; compaction is not deletion of evidence.
 4. Resume with system policy + checkpoint + current card + bounded retrieved context; re-tokenize before dispatch.
 
@@ -169,9 +213,9 @@ Apply [SECURITY.md](SECURITY.md) at each tool boundary, independent of prompts o
 | Phase | Deliverable | Exit criteria / exclusions |
 | --- | --- | --- |
 | 0 — current foundation | Python launcher, profiles, read-only discovery, context/checkpoint schemas | Verify local launch and safety checks; no autonomous execution claims |
-| 1 — local vertical slice | One project, offline dossier intake, adapter/task-card validation, approval UI, local role routing, scoped diffs, Node/Vite preview, checkpoint persistence | One small change completes existing checks and can resume; writes denied outside scope; no online provider or training required |
+| 1 — local vertical slice | One project, ordered chunk cache, mount diagnostics/hash-keyed profiles, offline coverage ledger and concept approval, local collaborative planning, adapter/task cards, scoped diffs, Node/Vite preview, checkpoints | Re-budget on model changes; resume without losing requirement order; concept/plan/operation approvals are distinct; deny out-of-scope writes and host fallback |
 | 2 — references and visual QA | Project reference store, bounded retrieval, verified image input, screenshots and bounded repair loop | Trace findings to source and revision; report unsupported/inconclusive QA honestly |
-| 3 — optional online research and resource controls | Approved provider/search/fetch clients, retained dossiers, outbound policy, live counters, compaction and VRAM admission | Demonstrate injection rejection at tool boundaries, no default private-data egress, quota/truncation handling, and safe resource-pressure pause/resume |
+| 3 — optional online research and resource controls | Approved keyword-led search/fetch, coverage-driven research, retained dossiers, outbound policy, live counters, compaction/VRAM admission, optional sandboxed VSCodium bridge | Test incomplete coverage, bounded retries, stale-profile invalidation, query privacy, denied terminal operations, editor revision conflicts, and safe pause/resume |
 | 4 — measured specialization | Role evaluation, optional adapter registry, curated dataset export and local training workflow | Held-out improvement, compatibility/license checks, explicit data consent, and rollback |
 
 Each phase must preserve offline operation and include regression tests for its new interfaces and trust boundaries. Basic budget admission is required before execution in phase 1; richer telemetry arrives in phase 3. Defer multi-project scheduling, collaboration, plugins, and broad indexing until the single-project workflow is reliable. This documentation change does not scaffold these future components or alter current runtime behavior.
